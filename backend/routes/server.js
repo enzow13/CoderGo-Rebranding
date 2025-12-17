@@ -1,36 +1,62 @@
-// backend/routes/ai.js (Exemplo Node.js/Express)
-const OpenAI = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// backend/server.js
+const express = require('express');
+const cors = require('cors');
+// Importa a biblioteca do Google Gemini
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const app = express();
+const PORT = 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// Configure sua API KEY do Google aqui
+const genAI = new GoogleGenerativeAI("AIzaSyD_DAIq87MFo8CscfPGU51f4eDAMbxhWyM");
+
+// Configuração para o Gemini sempre responder em JSON (Importante!)
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-2.5-flash", // Modelo rápido e eficiente
+  generationConfig: { responseMimeType: "application/json" } 
+});
+
+app.get('/', (req, res) => {
+  res.send('O Cérebro (Gemini) está ligado!');
+});
 
 app.post('/api/check-code', async (req, res) => {
-  const { userCode, exerciseContext } = req.body;
+  console.log("Recebi código para o Gemini analisar...");
+  const { userCode } = req.body;
 
-  const prompt = `
-    Você é um tutor de programação sênior, paciente e didático.
-    O aluno está resolvendo este exercício: "${exerciseContext}".
+  try {
+    const prompt = `
+      Você é um professor de Python focado em iniciantes.
+      Analise o seguinte código enviado por um aluno:
+      "${userCode}"
+      
+      Regras:
+      1. Se houver erro, explique de forma curta.
+      2. Se estiver certo, parabenize.
+      3. RESPONDA APENAS NESTE FORMATO JSON:
+      { "message": "sua explicação aqui" }
+    `;
+
+    // 1. Gera o conteúdo
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
     
-    Código do aluno:
-    ${userCode}
+    // 2. Pega o texto da resposta
+    const text = response.text();
+    
+    // 3. Envia para o frontend
+    // Como configuramos responseMimeType: "application/json", o texto já vem formatado
+    res.json(JSON.parse(text));
 
-    Tarefa:
-    1. Verifique se o código resolve o problema corretamente.
-    2. Se estiver errado, explique o erro sem dar a resposta pronta.
-    3. Se estiver certo, sugira uma melhoria de performance ou estilo (Pythonic way).
-    4. Responda em formato JSON: { "status": "pass" | "fail", "feedback": "string", "pontos": number }
-  `;
-
-  const completion = await openai.chat.completions.create({
-    messages: [{ role: "system", content: prompt }],
-    model: "gpt-4o-mini",
-    response_format: { type: "json_object" } // Garante que a IA responda JSON
-  });
-
-  const aiResponse = JSON.parse(completion.choices[0].message.content);
-  
-  // Se passou, salva os pontos no banco de dados aqui
-  if (aiResponse.status === "pass") {
-      await database.users.incrementPoints(req.userId, aiResponse.pontos);
+  } catch (error) {
+    console.error("Erro no Gemini:", error);
+    res.status(500).json({ message: "O Gemini está confuso... (Erro no servidor)" });
   }
+});
 
-  res.json(aiResponse);
+app.listen(PORT, () => {
+  console.log(`✨ Cérebro Gemini rodando na porta ${PORT}`);
 });

@@ -36,10 +36,11 @@ const CodingArena = () => {
   const askAI = async () => {
     setLoadingAI(true);
     // Aqui você chamaria seu backend, que chama a OpenAI
-    const response = await fetch('/api/check-code', {
-        method: 'POST',
-        body: JSON.stringify({ userCode: code, userOutput: output })
-    });
+    const response = await fetch('https://expert-journey-gr9pxr5p667cvr7j-5000.app.github.dev/api/check-code', {
+    method: 'POST',
+    body: JSON.stringify({ userCode: code }),
+    headers: { 'Content-Type': 'application/json' } // Adicionei isso pra garantir
+});
     const data = await response.json();
     setFeedback(data.message); // Ex: "Sua lógica está certa, mas tente usar um loop for."
     setLoadingAI(false);
